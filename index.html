@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام أمان للموارد الزراعية - قسم التكاليف والمخزون</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <style>
+        :root { 
+            --p-color: #2e7d32;
+            --s-color: #1565c0; 
+            --dark: #263238; 
+            --danger: #d32f2f; 
+            --orange: #e65100; 
+            --bg-color: #f4f7f6;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg-color);
+            padding: 5px; 
+            margin: 0; 
+            color: #333; 
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: auto;
+            background: white; 
+            padding: 15px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        
+        /* شريط التنقل الاحترافي */
+        .desktop-tabs { 
+            display: flex;
+            gap: 10px; 
+            margin-bottom: 20px; 
+            justify-content: center; 
+            flex-wrap: wrap; 
+            background: #eef2f5; 
+            padding: 10px; 
+            border-radius: 8px; 
+            border: 1px solid #cfd8dc;
+        }
+        .tab-btn { 
+            background: #fff; 
+            border: 2px solid #b0bec5; 
+            color: var(--dark);
+            padding: 12px 20px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 15px; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+        }
+        .tab-btn:hover { 
+            border-color: var(--s-color); 
+            transform: translateY(-2px);
+        }
+        .tab-btn.active { 
+            background: var(--s-color); 
+            color: #fff; 
+            border-color: var(--s-color);
+            box-shadow: 0 4px 10px rgba(21,101,192,0.3); 
+            transform: translateY(-3px); 
+        }
+        
+        /* حاويات الأقسام */
+        .main-tab-content { 
+            display: none;
+            animation: fadeIn 0.4s ease-in-out; 
+        }
+        .main-tab-content.active { 
+            display: block;
+        }
+        @keyframes fadeIn { 
+            from { 
+                opacity: 0; 
+                transform: translateY(5px);
+            } 
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            } 
+        } 
+
+        /* شريط اختيار صنف الإنتاج */
+        .prod-selector-container { 
+            background: #fff3e0;
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            border: 1px dashed var(--orange); 
+            display:flex; 
+            align-items:center; 
+            gap:15px;
+        }
+        .prod-selector { 
+            font-size: 16px; 
+            padding: 8px; 
+            border-radius: 5px; 
+            border: 2px solid var(--orange);
+            font-weight: bold; 
+            color: var(--dark); 
+            flex-grow: 1; 
+            cursor: pointer; 
+        } 
+
+        .main-header { 
+            text-align: center;
+            border-bottom: 3px solid var(--p-color); 
+            margin-bottom: 10px; 
+            padding-bottom: 10px; 
+        }
+        .info-bar { 
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr; 
+            background: #f9f9f9; 
+            padding: 8px; 
+            border: 1px solid #ddd; 
+            margin-top: 10px; 
+            font-weight: bold; 
+            text-align: center;
+        }
+        .control-panel { 
+            background: #fff3e0; 
+            padding: 12px; 
+            border-radius: 8px; 
+            margin-bottom: 15px;
+            border: 1px solid #ffe0b2; 
+        }
+        .section-h { 
+            background: var(--p-color); 
+            color: white; 
+            padding: 8px;
+            margin-top: 15px; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+        .feed-h { 
+            background: var(--s-color) !important;
+        }
+        .audit-h { 
+            background: var(--dark) !important;
+        }
+        .dispense-h { 
+            background: #1976d2 !important; 
+            border-bottom: 3px solid #0d47a1;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 5px; 
+            font-size: 13px; 
+            table-layout: fixed;
+        }
+        th, td { 
+            border: 1px solid #ccc; 
+            padding: 6px; 
+            text-align: center;
+            word-wrap: break-word; 
+        }
+        th { 
+            background: #f2f2f2;
+        }
+        input[type="text"], input[type="number"], input[type="date"], input[type="time"] { 
+            width: 90%; 
+            padding: 4px;
+            border: 1px solid #ddd; 
+            text-align: center; 
+            border-radius: 3px; 
+            font-family: inherit;
+        }
+        select { 
+            width: 95%; 
+            padding: 4px; 
+            border: 1px solid #ddd; 
+            text-align: center;
+            border-radius: 3px; 
+            font-family: inherit; 
+            font-weight: bold; 
+            color: var(--s-color); 
+        }
+        .total-row { 
+            background: #fff9c4;
+            font-weight: bold; 
+        }
+        .summary-box { 
+            background: var(--dark); 
+            color: #ffca28; 
+            padding: 15px; 
+            border-radius: 6px;
+            display: grid; 
+            grid-template-columns: 1fr 1fr 1fr; 
+            text-align: center; 
+            margin: 15px 0; 
+            font-weight: bold;
+        }
+        .btn { 
+            padding: 10px 15px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer;
+            font-weight: bold; 
+            color: white; 
+            margin: 2px; 
+            transition: 0.3s; 
+        }
+        .del-btn { 
+            background: var(--danger);
+            color: white; 
+            border: none; 
+            border-radius: 3px; 
+            cursor: pointer; 
+            padding: 2px 8px;
+        }
+        .modal { 
+            display: none; 
+            position: fixed; 
+            z-index: 10000; 
+            left: 0; 
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.5); 
+            overflow-y: auto; 
+        }
+        .modal-content { 
+            background: white;
+            width: 95%; 
+            max-width:800px; 
+            margin: 50px auto; 
+            padding: 20px; 
+            border-radius:8px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .time-wrapper { 
+            display: inline-flex; 
+            align-items: center; 
+            background: rgba(255,255,255,0.15); 
+            padding: 2px 8px;
+            border-radius: 4px; 
+            gap: 5px; 
+            font-size: 11px; 
+            margin-right: 10px; 
+        }
+        .time-wrapper input[type="time"] { 
+            width: 75px !important;
+            padding: 1px !important; 
+            font-size: 11px; 
+            font-weight: bold; 
+            border: none; 
+        }
+        .calc-hrs-span { 
+            background: #fff;
+            color: #000; 
+            padding: 2px 6px; 
+            border-radius: 3px; 
+            font-weight: bold; 
+            min-width: 35px; 
+            display: inline-block; 
+            text-align: center; 
+            margin-left: 2px;
+        } 
+        .arch-table { 
+            background: #fafafa; 
+            margin-top: 10px; 
+            border: 1px solid #b0bec5; 
+            width:100%;
+        }
+        .arch-table th { 
+            background: #cfd8dc; 
+            color: #263238;
+        }
+        .auto-gen-row { 
+            background: #e8f5e9; 
+            font-style: italic; 
+            color: #1b5e20;
+        }
+        .filter-bar { 
+            background: #e3f2fd; 
+            padding: 8px; 
+            display: flex; 
+            gap: 15px; 
+            align-items: center;
+            border: 1px solid #90caf9; 
+            border-top: none; 
+            border-radius: 0 0 4px 4px; 
+            margin-bottom: 10px; 
+            font-size: 12px; 
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body> 
+
+<div id="fullContainer" class="container">
+    <div class="main-header">
+        <h2>شركة أمان للموارد الزراعية وإنتاج الأعلاف</h2>
+        <p style="color:var(--p-color); font-weight:bold; margin:5px;">قسم التكاليف والمخزون</p>
+        <div class="info-bar">
+            <span>سند رقم: <span id="currentStatusLabel" style="color:var(--danger)">مباشر (غير محفوظ)</span> (<span class="val-no">-</span>)</span>
+            <span>التاريخ: <span class="val-date">-</span></span>
+            <span>إجمالي ساعات التشغيل الحالية: <span class="val-hours">0.00</span> ساعة</span>
+        </div>
+    </div> 
+
+    <div class="desktop-tabs">
+        <div class="tab-btn active" id="btn_tab-prod" onclick="switchMainTab('tab-prod')">🏭 عمليات الإنتاج</div>
+        <div class="tab-btn" id="btn_tab-audit" onclick="switchMainTab('tab-audit')">⚖️ توريد المخازن</div>
+        <div class="tab-btn" id="btn_tab-dispense" onclick="switchMainTab('tab-dispense')">🚚 صرف للعملاء</div>
+        <div class="tab-btn" id="btn_tab-reports" onclick="switchMainTab('tab-reports')">📊 التقارير والإدارة</div>
+        <div class="tab-btn" id="btn_tab-archive" onclick="switchMainTab('tab-archive')">🗄️ الأرشيف المالي</div>
+    </div> 
+
+    <div class="control-panel">
+        <h4 style="margin:0 0 10px 0; color:var(--orange);">🏭 معايير التكلفة الصناعية والإنتاجية الثابتة</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; background: #fff; padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
+            <label style="font-weight: bold;">
+                ⚙️ التكلفة الصناعية الثابتة للطن ($):
+                <input type="number" id="fixedVariableCost" value="25.17" oninput="doCalc()" style="width: 80%; font-weight: bold; color: var(--danger);">
+            </label>
+            <label style="font-weight: bold; color: var(--s-color);">
+                💵 سعر بيع طن العلف المستهدف ($): 
+                <input type="number" id="salesPrice" value="170" oninput="doCalc()" style="width: 80%; font-weight: bold; color: var(--s-color);">
+            </label>
+            <label style="font-weight: bold; color: var(--p-color); text-align: center;">
+                🛠️ حالة اليوم التشغيلي: <br>
+                <input type="checkbox" id="isProductiveDay" checked onchange="doCalc()" style="transform: scale(1.4); margin-top: 5px;"> يوم إنتاج فعلي
+            </label>
+        </div> 
+
+        <div style="margin-top:10px; font-weight:bold; display: flex; justify-content: space-between; background: #fdfefe; padding: 8px; border-radius: 4px; font-size:12px; border: 1px solid #eee;">
+            <div style="color: var(--p-color);">إجمالي التكاليف الصناعية المحملة لإنتاج اليوم: <span id="dailyCostDisplay" style="font-size:14px; color:red;">0.00</span> $</div>
+            <div style="color: #4527a0;">* طاقة الإنتاج المقاسة للأعلاف: <span id="feedTotalTonsDisplay">0.000</span> طن</div>
+        </div>
+    </div> 
+
+    <div class="control-panel">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <label>رقم السند: <input type="text" id="orderNo" oninput="updateInfo()"></label>
+            <label>التاريخ: <input type="date" id="orderDate" oninput="updateInfo()"></label>
+            <label>بحث مادة: <input type="text" id="matSearch" placeholder="بحث..."> </label>
+        </div>
+    </div> 
+
+    <div id="tab-prod" class="main-tab-content active">
+        <div class="prod-selector-container">
+            <span style="font-size: 20px;">🔍</span>
+            <strong style="color: var(--orange);">اختر الصنف المراد إدخال مواده:</strong>
+            <select id="prodSelector" class="prod-selector" onchange="switchProdTab()">
+                <option value="fn">🌾 علف نامي</option>
+                <option value="fb">🌾 علف بدائي</option>
+                <option value="ff">🌾 علف نهائي</option>
+                <option value="pn">📦 برمكس نامي</option>
+                <option value="pb">📦 برمكس بدائي</option>
+                <option value="pf">📦 برمكس نهائي</option>
+            </select>
+        </div>
+        
+        <div id="tablesContainer"></div>
+    </div> 
+
+    <div id="tab-audit" class="main-tab-content">
+        <div id="controlSection" style="border:2px solid var(--dark); padding:10px; background:#fff; border-radius: 6px;">
+            <div class="section-h audit-h">
+                <span>⚖️ مطابقة الرقابة والمخازن (بالطن)</span>
+                <button class="btn" onclick="printAuditReport()" style="background:var(--orange); width:auto; padding:4px 10px; font-size:12px;">🖨️ طباعة مطابقة المخازن وخلاصة الهامش</button>
+            </div>
+            <table id="tbl_audit">
+                <thead><tr><th>الصنف المعياري</th><th>الكمية الفعلية المحتسبة (طن)</th><th>تقرير أمين المخازن الفعلي (طن)</th><th>الفارق الرقابي (طن)</th></tr></thead>
+                <tbody>
+                    <tr><td>علف نامي</td><td id="s_fn">0</td><td><input type="number" id="i_fn" oninput="doCalc()" step="0.001"></td><td id="d_fn">0</td></tr>
+                    <tr><td>علف بدائي</td><td id="s_fb">0</td><td><input type="number" id="i_fb" oninput="doCalc()" step="0.001"></td><td id="d_fb">0</td></tr>
+                    <tr><td>علف نهائي</td><td id="s_ff">0</td><td><input type="number" id="i_ff" oninput="doCalc()" step="0.001"></td><td id="d_ff">0</td></tr>
+                </tbody>
+            </table>
+        </div> 
+    </div> 
+
+    <div id="tab-dispense" class="main-tab-content">
+        <div id="dispenseSection" style="border:2px solid var(--s-color); padding:10px; background:#f4f9fd; border-radius: 6px;">
+            <div class="section-h dispense-h">
+                <span>🚚 سجل صرف الأعلاف والمواد المرافقة (ذ ، ص)</span>
+                <div>
+                    <button class="btn" onclick="printDispenseReport()" style="background:var(--orange); width:auto; padding:4px 10px; font-size:12px;">🖨️ طباعة تقرير الصرف والعملاء</button>
+                    <button class="btn" onclick="addDispenseRow()" style="background:white; color:black; width:auto; padding:4px 10px; font-size:12px;">+ إضافة عملية صرف</button>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <strong style="color:var(--s-color)">🔍 خيارات الطباعة للتقرير الحر (تراكمي مجمع للعملاء):</strong>
+                <label>من: <input type="date" id="d_fromDate" style="width:110px;"></label>
+                <label>إلى: <input type="date" id="d_toDate" style="width:110px;"></label>
+                <label>العميل: <input type="text" id="d_custSearch" placeholder="بحث باسم العميل..." style="width:150px;"></label>
+                <span style="color:#666; font-size:10px;">(تُطبق عند عدم استعراض سند)</span>
+            </div>
+            <table id="tbl_dispense">
+                <thead>
+                    <tr>
+                        <th style="width:25%">اسم العميل</th>
+                        <th style="width:20%">نوع العلف المنصرف</th>
+                        <th>الكمية (كيس)</th>
+                        <th>مادة (ذ) المحتسبة (كجم)</th>
+                        <th>مادة (ص) المحتسبة (كجم)</th>
+                        <th style="width:40px">❌</th>
+                    </tr>
+                </thead>
+                <tbody id="b_dispense"></tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="2">الإجمالي التلقائي للصرفيات</td>
+                        <td><span id="tot_d_qty">0</span> كيس</td>
+                        <td style="color:var(--s-color)"><span id="tot_d_z">0.00</span> كجم</td>
+                        <td style="color:var(--orange)"><span id="tot_d_s">0.00</span> كجم</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div> 
+
+    <div id="tab-reports" class="main-tab-content">
+        <div class="control-panel" style="background:#e8f5e9; border-color:#81c784;">
+            <h3 style="margin-top:0; color:var(--p-color); text-align:center;">لوحة التقارير الإدارية والتحليلات</h3>
+            <div style="display:flex; gap:15px; flex-wrap:wrap; justify-content:center;">
+                <button class="btn" style="background:#673ab7; flex:1; padding: 20px; font-size: 16px;" onclick="openFinancialAnalysisModal()">📊 سجل التحليل المالي</button>
+                <button class="btn" style="background:#2e7d32; flex:1; padding: 20px; font-size: 16px;" onclick="handleComprehensiveReport()">📋 تقرير إداري تنفيذي</button>
+                <button class="btn" style="background:#0277bd; flex:1; padding: 20px; font-size: 16px;" onclick="handleProductionReport()">🏭 تقرير الإنتاج والمطابقة</button>
+                <button class="btn" style="background:#e65100; flex:1; padding: 20px; font-size: 16px;" onclick="handleMaterialsReport()">🧪 تقرير نسب ومقارنة المواد</button>
+            </div>
+        </div>
+    </div> 
+
+    <div id="tab-archive" class="main-tab-content">
+        <div id="arch_section" style="border: 2px solid var(--dark); padding:10px; background:white; border-radius: 6px;">
+            <h3 style="color:var(--dark); margin-bottom:5px; margin-top:0;">🗄️ الأرشيف المالي الفعلي:</h3>
+            <table class="arch-table">
+                <thead>
+                    <tr><th>رقم السند</th><th>التاريخ</th><th>الإنتاج (طن)</th><th>كلفة الخامات ($)</th><th>ساعات التشغيل</th><th>إجراءات التحكم</th></tr>
+                </thead>
+                <tbody id="archived_orders_body"></tbody>
+            </table>
+        </div>
+    </div> 
+
+    <div class="summary-box">
+        <div>إجمالي كمية الإنتاج: <span id="resQ">0</span> طن</div>
+        <div>إجمالي تكلفة الخامات: <span id="resV">0</span> $</div>
+        <div>⏱️ ساعات التشغيل الكلية: <span id="resTime">0.00</span> ساعة</div>
+    </div> 
+
+    <div style="background: #fff3e0; border: 2px dashed var(--orange); padding: 12px; margin-top: 15px; text-align: right; font-weight: bold; font-size: 14px; border-radius: 5px;">
+        ⚠️ <span style="color:var(--orange)">تقرير هامش تكلفة الطاقة المعطلة الحالي لليوم:</span> 
+        <span style="float: left; color: var(--danger); font-size:16px;" id="totalIdleCostDisplay">0.00 $</span>
+        <div style="font-size:11px; font-weight:normal; color:#555; margin-top:5px;" id="idleDetailsDisplay">لا يوجد عجز في الطاقة الإنتاجية.</div>
+    </div> 
+
+    <div style="margin-top:15px; display:grid; gap:5px;">
+        <button class="btn" style="background:var(--p-color); font-size: 16px; padding: 15px;" onclick="doSave()">💾 حفظ السند في الأرشيف المالي وإصدار القيود</button>
+    </div> 
+</div> 
+
+<div id="modal_box" class="modal">
+    <div class="modal-content" style="max-width: 90%;">
+        <div id="modal_print_area" style="padding:10px;">
+            <div class="main-header">
+                <h2>شركة أمان للموارد الزراعية وإنتاج الأعلاف</h2>
+                <p style="color:var(--p-color); font-weight:bold; margin:5px;">قسم التكاليف والمخزون</p>
+            </div>
+            <h3 id="modal_title" style="text-align:center; color:var(--s-color); text-decoration:underline;"></h3>
+            <div id="modal_body"></div>
+            <div id="modal_extra"></div>
+        </div>
+        <div style="margin-top:20px; display:flex; gap:10px;">
+            <button class="btn" style="background:var(--orange); flex:1;" onclick="printModalOnly()">🖨️ طباعة التقرير الآن</button>
+            <button class="btn" style="background:var(--danger); flex:1;" onclick="closeModal('modal_box')">إغلاق</button>
+        </div>
+    </div>
+</div> 
+
+<div id="modal_comp_report" class="modal">
+    <div class="modal-content" style="max-width: 650px;">
+        <h3 style="color:var(--s-color); border-bottom:2px solid; padding-bottom:10px; margin-top:0;">🔍 خيارات البحث المتقدم والفلترة للتقرير الإداري الشامل</h3>
+        <p style="font-size:12px; color:#555;">ستقوم هذه المنظومة بالبحث والربط المتكامل لتوليد لوحة معلومات ورقابة متكاملة (إنتاج، تكاليف، مخازن، عملاء، طاقة معطلة) لتقديمها للإشراف والمدير التنفيذي.</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px; background:#f4f7f6; padding:15px; border:1px solid #ccc; border-radius:5px;">
+            <label style="font-weight:bold;">رقم السند المالي: <br><input type="text" id="cr_no" placeholder="اتركه فارغاً للكل..." style="width:100%;"></label>
+            <label style="font-weight:bold;">اسم العميل / الموزع: <br><input type="text" id="cr_cust" placeholder="بحث بجزء من الاسم..." style="width:100%;"></label>
+            <label style="font-weight:bold;">من تاريخ العمليات: <br><input type="date" id="cr_from" style="width:100%;"></label>
+            <label style="font-weight:bold;">إلى تاريخ العمليات: <br><input type="date" id="cr_to" style="width:100%;"></label>
+            <label style="grid-column: span 2; font-weight:bold;">تصفية وربط حسب الصنف الرئيسي: <br>
+                <select id="cr_item" style="width:100%;">
+                    <option value="">-- عرض وتجميع كافة الأصناف المعبأة --</option>
+                    <option value="pn">📦 برمكس نامي</option>
+                    <option value="pb">📦 برمكس بدائي</option>
+                    <option value="pf">📦 برمكس نهائي</option>
+                    <option value="fn">🌾 علف نامي</option>
+                    <option value="fb">🌾 علف بدائي</option>
+                    <option value="ff">🌾 علف نهائي</option>
+                </select>
+            </label>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background:var(--p-color); flex:1;" onclick="printFreeModeComprehensive()">🖨️ إنشاء وطباعة التقرير الشامل</button>
+            <button class="btn" style="background:var(--danger); flex:1;" onclick="closeModal('modal_comp_report')">إلغاء</button>
+        </div>
+    </div>
+</div> 
+
+<div id="modal_prod_report" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <h3 style="color:#0277bd; border-bottom:2px solid; padding-bottom:10px; margin-top:0;">🏭 خيارات تقرير الإنتاج والتكاليف والمطابقة</h3>
+        <p style="font-size:12px; color:#555;">هذا التقرير مخصص لعرض كفاءة الإنتاج، التكاليف (مع/بدون فاقد الأمانات)، نقاط التعادل، ومطابقة المخازن مع الملحق الاستراتيجي التراكمي.</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px; background:#e1f5fe; padding:15px; border:1px solid #81d4fa; border-radius:5px;">
+            <label style="font-weight:bold;">من رقم سند: <br><input type="text" id="pr_from_no" placeholder="بداية السندات..." style="width:100%;"></label>
+            <label style="font-weight:bold;">إلى رقم سند: <br><input type="text" id="pr_to_no" placeholder="نهاية السندات..." style="width:100%;"></label>
+            <label style="font-weight:bold;">من تاريخ: <br><input type="date" id="pr_from" style="width:100%;"></label>
+            <label style="font-weight:bold;">إلى تاريخ: <br><input type="date" id="pr_to" style="width:100%;"></label>
+            <label style="grid-column: span 2; font-weight:bold;">تحديد الصنف: <br>
+                <select id="pr_item" style="width:100%;">
+                    <option value="">-- جميع الأصناف (إجمالي شامل) --</option>
+                    <option value="fn">🌾 علف نامي</option>
+                    <option value="fb">🌾 علف بدائي</option>
+                    <option value="ff">🌾 علف نهائي</option>
+                </select>
+            </label>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background:#0277bd; flex:1;" onclick="printFreeModeProduction(false)">🖨️ طباعة تقرير الإنتاج الآن</button>
+            <button class="btn" style="background:var(--danger); flex:1;" onclick="closeModal('modal_prod_report')">إلغاء</button>
+        </div>
+    </div>
+</div> 
+
+<div id="modal_mat_report" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <h3 style="color:#e65100; border-bottom:2px solid; padding-bottom:10px; margin-top:0;">🧪 خيارات تقرير نسب المواد والمطابقة والمقارنة</h3>
+        <p style="font-size:12px; color:#555;">يقوم هذا التقرير التفصيلي بتحليل معمق لنسب المواد المستخدمة في كل سند ومقارنتها عبر التواريخ، واستخراج الانحرافات، والمواد المضافة بشكل استثنائي أو المفقودة.</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px; background:#fff3e0; padding:15px; border:1px solid #ffcc80; border-radius:5px;">
+            <label style="font-weight:bold;">من تاريخ: <br><input type="date" id="mat_from" style="width:100%;"></label>
+            <label style="font-weight:bold;">إلى تاريخ: <br><input type="date" id="mat_to" style="width:100%;"></label>
+            <label style="grid-column: span 2; font-weight:bold;">تحديد الصنف للمقارنة: <br>
+                <select id="mat_item" style="width:100%;">
+                    <option value="">-- عرض جميع الأصناف (كل صنف بجدول مستقل) --</option>
+                    <option value="fn">🌾 علف نامي</option>
+                    <option value="fb">🌾 علف بدائي</option>
+                    <option value="ff">🌾 علف نهائي</option>
+                    <option value="pn">📦 برمكس نامي</option>
+                    <option value="pb">📦 برمكس بدائي</option>
+                    <option value="pf">📦 برمكس نهائي</option>
+                </select>
+            </label>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background:#e65100; flex:1;" onclick="printFreeModeMaterials()">🖨️ إنشاء تقرير نسب المواد الآن</button>
+            <button class="btn" style="background:var(--danger); flex:1;" onclick="closeModal('modal_mat_report')">إلغاء</button>
+        </div>
+    </div>
+</div> 
+
+<script src="app.js"></script>
+</body>
+</html>
